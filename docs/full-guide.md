@@ -74,6 +74,10 @@ daily_stock_analysis/
 | Secret 名称 | 说明 | 必填 |
 |------------|------|:----:|
 | `WECHAT_WEBHOOK_URL` | 企业微信 Webhook URL | 可选 |
+| `WECOM_STREAM_ENABLED` | 企业微信长连接机器人开关；`python main.py --serve` 时主动连接，不替代 `WECHAT_WEBHOOK_URL` | 可选 |
+| `WECOM_STREAM_BOT_ID` | 企业微信长连接机器人 BotID | 可选 |
+| `WECOM_STREAM_CLIENT_SECRET` | 企业微信长连接 Secret（敏感值） | 可选 |
+| `WECOM_STREAM_CLIENT_ID` | 兼容旧配置；`WECOM_STREAM_BOT_ID` 为空时作为 BotID fallback（敏感值） | 可选 |
 | `FEISHU_WEBHOOK_URL` | 飞书 Webhook URL | 可选 |
 | `FEISHU_WEBHOOK_SECRET` | 飞书 Webhook 签名密钥（开启“签名校验”时必填） | 可选 |
 | `FEISHU_WEBHOOK_KEYWORD` | 飞书 Webhook 关键词（开启“关键词”时必填） | 可选 |
@@ -283,6 +287,10 @@ daily_stock_analysis/
 | 变量名 | 说明 | 必填 |
 |--------|------|:----:|
 | `WECHAT_WEBHOOK_URL` | 企业微信机器人 Webhook URL | 可选 |
+| `WECOM_STREAM_ENABLED` | 企业微信长连接机器人开关；`python main.py --serve` 时主动连接，不改变 Webhook 推送 | 可选 |
+| `WECOM_STREAM_BOT_ID` | 企业微信长连接机器人 BotID | 可选 |
+| `WECOM_STREAM_CLIENT_SECRET` | 企业微信长连接 Secret（敏感值） | 可选 |
+| `WECOM_STREAM_CLIENT_ID` | 兼容旧配置；`WECOM_STREAM_BOT_ID` 为空时作为 BotID fallback（敏感值） | 可选 |
 | `FEISHU_WEBHOOK_URL` | 飞书机器人 Webhook URL | 可选 |
 | `FEISHU_WEBHOOK_SECRET` | 飞书机器人签名密钥（仅在机器人安全设置启用“签名校验”时填写） | 可选 |
 | `FEISHU_WEBHOOK_KEYWORD` | 飞书机器人关键词（仅在机器人安全设置启用“关键词”时填写） | 可选 |
@@ -972,6 +980,8 @@ crontab -e
 1. 在企业微信群聊中添加"群机器人"
 2. 复制 Webhook URL
 3. 设置 `WECHAT_WEBHOOK_URL`
+
+企业微信智能机器人长连接使用 `WECOM_STREAM_ENABLED`、`WECOM_STREAM_BOT_ID`、`WECOM_STREAM_CLIENT_SECRET`；`WECOM_STREAM_CLIENT_ID` 仅作为旧配置兼容 fallback。启用后运行 `python main.py --serve` 会主动连接企业微信 WebSocket，群聊 `@机器人 xxx` 和单聊纯文本会自动进入 `/chat`，也可显式使用 `/chat`、`/ask`、`/help`。该能力不新增 `/bot/wecom` HTTP endpoint，也不会改变 `WECHAT_WEBHOOK_URL` 的群机器人推送语义。
 
 ### 飞书
 

@@ -31,6 +31,10 @@ const requiredLocalizedKeys = [
   'TELEGRAM_BOT_TOKEN',
   'TELEGRAM_CHAT_ID',
   'TELEGRAM_MESSAGE_THREAD_ID',
+  'WECOM_STREAM_ENABLED',
+  'WECOM_STREAM_CLIENT_ID',
+  'WECOM_STREAM_CLIENT_SECRET',
+  'WECOM_STREAM_BOT_ID',
   'FEISHU_STREAM_ENABLED',
   'DINGTALK_STREAM_ENABLED',
   'EMAIL_SENDER',
@@ -117,6 +121,18 @@ describe('systemConfigI18n required key coverage', () => {
     expect(zh?.notes?.join(' ')).toContain('不要');
     expect(en?.summary).toContain('HMAC');
     expect(en?.notes?.join(' ')).toContain('Do not');
+  });
+
+  it('documents WeCom Stream Bot as a reserved non-webhook entry', () => {
+    const zh = getSettingsHelpContent('settings.notification.WECOM_STREAM_ENABLED', undefined, 'zh-CN');
+    const en = getSettingsHelpContent('settings.notification.WECOM_STREAM_ENABLED', undefined, 'en');
+    const zhText = [zh?.summary, zh?.usage, ...(zh?.impact ?? []), ...(zh?.notes ?? [])].join('\n');
+    const enText = [en?.summary, en?.usage, ...(en?.impact ?? []), ...(en?.notes ?? [])].join('\n');
+
+    expect(zhText).toContain('仅保存配置');
+    expect(zhText).toContain('企业微信 Webhook');
+    expect(enText).toContain('reserved');
+    expect(enText).toContain('does not start');
   });
 });
 

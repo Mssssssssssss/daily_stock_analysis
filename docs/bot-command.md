@@ -253,14 +253,20 @@ feishu_encrypt_key: str                # 新增：加密密钥
 dingtalk_app_key: str                  # 新增
 dingtalk_app_secret: str               # 新增
 
-# 企业微信机器人（开发中）
+# 企业微信机器人
 wecom_token: str                       # 新增：回调 Token
 wecom_encoding_aes_key: str            # 新增：EncodingAESKey
+wecom_stream_enabled: bool             # 长连接机器人开关，随 python main.py --serve 启动
+wecom_stream_client_id: str            # 兼容旧配置；BotID fallback
+wecom_stream_client_secret: str        # 长连接 Secret
+wecom_stream_bot_id: str               # 长连接 BotID
 
 # Telegram 机器人（开发中）
 telegram_bot_token: str                # 已有
 telegram_webhook_secret: str           # 新增：Webhook 密钥
 ```
+
+企业微信长连接机器人配置对应 `.env` 的 `WECOM_STREAM_ENABLED`、`WECOM_STREAM_BOT_ID`、`WECOM_STREAM_CLIENT_SECRET`，`WECOM_STREAM_CLIENT_ID` 仅作为旧配置兼容 fallback。启用后运行 `python main.py --serve` 会主动连接 `wss://openws.work.weixin.qq.com`，复用 `/chat`、`/ask`、`/help` 等现有命令；本功能不新增 `/bot/wecom` HTTP endpoint，也不改变 `WECHAT_WEBHOOK_URL` 企业微信群机器人 Webhook 推送。
 
 ## 扩展说明
 ### 怎样新增一个通知平台

@@ -8,7 +8,7 @@
 
 支持两种接入模式：
 1. Webhook 模式：需要公网 IP，配置回调 URL
-2. Stream 模式：无需公网 IP，通过 WebSocket 长连接（钉钉、飞书支持）
+2. Stream 模式：无需公网 IP，通过 WebSocket 长连接（钉钉、飞书、企业微信支持）
 """
 
 from bot.platforms.base import BotPlatform
@@ -53,6 +53,26 @@ except ImportError:
     get_feishu_stream_client = lambda: None
     start_feishu_stream_background = lambda: False
 
+# 企业微信 Stream 模式（可选）
+try:
+    from bot.platforms.wecom_stream import (
+        WeComStreamClient,
+        WeComStreamHandler,
+        WeComStreamReplyClient,
+        TTLMessageDeduplicator,
+        get_wecom_stream_client,
+        start_wecom_stream_background,
+        WECOM_STREAM_AVAILABLE,
+    )
+except ImportError:
+    WECOM_STREAM_AVAILABLE = False
+    WeComStreamClient = None
+    WeComStreamHandler = None
+    WeComStreamReplyClient = None
+    TTLMessageDeduplicator = None
+    get_wecom_stream_client = lambda: None
+    start_wecom_stream_background = lambda: False
+
 __all__ = [
     'BotPlatform',
     'DingtalkPlatform',
@@ -70,4 +90,12 @@ __all__ = [
     'get_feishu_stream_client',
     'start_feishu_stream_background',
     'FEISHU_SDK_AVAILABLE',
+    # 企业微信 Stream 模式
+    'WeComStreamClient',
+    'WeComStreamHandler',
+    'WeComStreamReplyClient',
+    'TTLMessageDeduplicator',
+    'get_wecom_stream_client',
+    'start_wecom_stream_background',
+    'WECOM_STREAM_AVAILABLE',
 ]

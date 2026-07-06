@@ -1157,6 +1157,37 @@ def start_bot_stream_clients(config: Config) -> None:
         except Exception as exc:
             logger.error(f"[Main] Failed to start Feishu Stream client: {exc}")
 
+    # 启动企业微信 Stream 客户端
+    if getattr(config, 'wecom_stream_enabled', False):
+        bot_id = (getattr(config, 'wecom_stream_bot_id', None) or '').strip()
+        legacy_client_id = (getattr(config, 'wecom_stream_client_id', None) or '').strip()
+        secret = (getattr(config, 'wecom_stream_client_secret', None) or '').strip()
+        if not bot_id and legacy_client_id:
+            logger.warning(
+                "[Main] WECOM_STREAM_CLIENT_ID is used as BotID fallback; "
+                "please migrate to WECOM_STREAM_BOT_ID."
+            )
+            bot_id = legacy_client_id
+
+        if not bot_id or not secret:
+            logger.warning(
+                "[Main] WeCom Stream enabled but WECOM_STREAM_BOT_ID and "
+                "WECOM_STREAM_CLIENT_SECRET are not complete."
+            )
+        else:
+            try:
+                from bot.platforms import start_wecom_stream_background, WECOM_STREAM_AVAILABLE
+                if WECOM_STREAM_AVAILABLE:
+                    if start_wecom_stream_background():
+                        logger.info("[Main] WeCom Stream client started in background.")
+                    else:
+                        logger.warning("[Main] WeCom Stream client failed to start.")
+                else:
+                    logger.warning("[Main] WeCom Stream enabled but websockets is missing.")
+                    logger.warning("[Main] Run: pip install websockets")
+            except Exception as exc:
+                logger.error(f"[Main] Failed to start WeCom Stream client: {exc}")
+
 
 def _resolve_scheduled_stock_codes(stock_codes: Optional[List[str]]) -> Optional[List[str]]:
     """Scheduled runs should always read the latest persisted watchlist."""

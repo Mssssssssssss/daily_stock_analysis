@@ -113,6 +113,68 @@ class TestFeishuWebhookFieldsRegistered(unittest.TestCase):
             self.assertIn(key, field_keys, f"{key} missing from schema response")
 
 
+class TestWeComStreamFieldsRegistered(unittest.TestCase):
+    """WeCom Stream Bot keys must be explicit settings fields."""
+
+    _WECOM_STREAM_KEYS = (
+        "WECOM_STREAM_ENABLED",
+        "WECOM_STREAM_CLIENT_ID",
+        "WECOM_STREAM_CLIENT_SECRET",
+        "WECOM_STREAM_BOT_ID",
+    )
+
+    def test_field_definitions_exist_in_notification_category(self):
+        for key in self._WECOM_STREAM_KEYS:
+            field = get_field_definition(key)
+            self.assertEqual(field["category"], "notification", f"{key} category")
+            self.assertNotEqual(
+                field["display_order"], 9000,
+                f"{key} should be explicitly registered, not inferred",
+            )
+
+    def test_switch_and_sensitive_controls(self):
+        self.assertEqual(get_field_definition("WECOM_STREAM_ENABLED")["ui_control"], "switch")
+        self.assertFalse(get_field_definition("WECOM_STREAM_ENABLED")["is_sensitive"])
+
+        for key in ("WECOM_STREAM_CLIENT_ID", "WECOM_STREAM_CLIENT_SECRET"):
+            field = get_field_definition(key)
+            self.assertTrue(field["is_sensitive"], f"{key} should be sensitive")
+            self.assertEqual(field["ui_control"], "password")
+
+        bot_id = get_field_definition("WECOM_STREAM_BOT_ID")
+        self.assertFalse(bot_id["is_sensitive"])
+        self.assertEqual(bot_id["ui_control"], "text")
+
+    def test_schema_response_includes_wecom_stream_fields(self):
+        schema = build_schema_response()
+        notification_cat = next(
+            (c for c in schema["categories"] if c["category"] == "notification"),
+            None,
+        )
+        self.assertIsNotNone(notification_cat, "notification category missing")
+        field_keys = {f["key"] for f in notification_cat["fields"]}
+        for key in self._WECOM_STREAM_KEYS:
+            self.assertIn(key, field_keys, f"{key} missing from schema response")
+
+    def test_display_order_is_stable_after_wechat_webhook(self):
+        wechat_order = get_field_definition("WECHAT_WEBHOOK_URL")["display_order"]
+        orders = [get_field_definition(key)["display_order"] for key in self._WECOM_STREAM_KEYS]
+
+        self.assertEqual(orders, sorted(orders))
+        self.assertTrue(all(order > wechat_order for order in orders))
+        self.assertLess(orders[-1], get_field_definition("FEISHU_APP_ID")["display_order"])
+
+    def test_warning_codes_mark_non_webhook_semantics(self):
+        for key in self._WECOM_STREAM_KEYS:
+            warning_codes = get_field_definition(key).get("warning_codes", [])
+            self.assertIn("not_webhook_delivery", warning_codes)
+
+    def test_fields_are_not_reserved_after_stream_implementation(self):
+        for key in self._WECOM_STREAM_KEYS:
+            warning_codes = get_field_definition(key).get("warning_codes", [])
+            self.assertNotIn("reserved_flag", warning_codes)
+
+
 class TestAstrBotFieldsRegistered(unittest.TestCase):
     """AstrBot config keys must be explicitly registered for settings UI."""
 

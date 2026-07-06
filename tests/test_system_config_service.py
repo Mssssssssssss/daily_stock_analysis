@@ -103,6 +103,71 @@ class SystemConfigServiceTestCase(unittest.TestCase):
         self.assertEqual(items["LLM_HERMES_EXTRA_HEADERS"]["value"], payload["mask_token"])
         self.assertTrue(items["LLM_HERMES_EXTRA_HEADERS"]["is_masked"])
 
+    def test_get_config_masks_wecom_stream_secrets(self) -> None:
+        self._rewrite_env(
+            "STOCK_LIST=600519,000001",
+            "WECOM_STREAM_ENABLED=true",
+            "WECOM_STREAM_CLIENT_ID=client-id-secret",
+            "WECOM_STREAM_CLIENT_SECRET=client-secret-value",
+            "WECOM_STREAM_BOT_ID=stock-analysis",
+        )
+
+        payload = self.service.get_config(include_schema=True)
+        items = {item["key"]: item for item in payload["items"]}
+
+        self.assertEqual(items["WECOM_STREAM_ENABLED"]["value"], "true")
+        self.assertFalse(items["WECOM_STREAM_ENABLED"]["is_masked"])
+        self.assertEqual(items["WECOM_STREAM_CLIENT_ID"]["value"], payload["mask_token"])
+        self.assertTrue(items["WECOM_STREAM_CLIENT_ID"]["is_masked"])
+        self.assertEqual(items["WECOM_STREAM_CLIENT_SECRET"]["value"], payload["mask_token"])
+        self.assertTrue(items["WECOM_STREAM_CLIENT_SECRET"]["is_masked"])
+        self.assertEqual(items["WECOM_STREAM_BOT_ID"]["value"], "stock-analysis")
+        self.assertFalse(items["WECOM_STREAM_BOT_ID"]["is_masked"])
+
+    def test_update_wecom_stream_fields_only_writes_submitted_keys(self) -> None:
+        version = self.manager.get_config_version()
+
+        result = self.service.update(
+            config_version=version,
+            items=[
+                {"key": "WECOM_STREAM_ENABLED", "value": "true"},
+                {"key": "WECOM_STREAM_BOT_ID", "value": "stock-analysis"},
+            ],
+            reload_now=False,
+        )
+
+        env_text = self.env_path.read_text(encoding="utf-8")
+        self.assertTrue(result["success"])
+        self.assertIn("WECOM_STREAM_ENABLED=true", env_text)
+        self.assertIn("WECOM_STREAM_BOT_ID=stock-analysis", env_text)
+        self.assertNotIn("WECOM_STREAM_CLIENT_ID", env_text)
+        self.assertNotIn("WECOM_STREAM_CLIENT_SECRET", env_text)
+
+    def test_update_wecom_stream_mask_token_does_not_overwrite_saved_secret(self) -> None:
+        self._rewrite_env(
+            "STOCK_LIST=600519,000001",
+            "WECOM_STREAM_CLIENT_ID=saved-client-id",
+            "WECOM_STREAM_CLIENT_SECRET=saved-client-secret",
+        )
+        version = self.manager.get_config_version()
+
+        result = self.service.update(
+            config_version=version,
+            items=[
+                {"key": "WECOM_STREAM_CLIENT_ID", "value": "******"},
+                {"key": "WECOM_STREAM_CLIENT_SECRET", "value": "******"},
+                {"key": "WECOM_STREAM_BOT_ID", "value": "stock-analysis"},
+            ],
+            mask_token="******",
+            reload_now=False,
+        )
+
+        env_text = self.env_path.read_text(encoding="utf-8")
+        self.assertEqual(result["skipped_masked_count"], 2)
+        self.assertIn("WECOM_STREAM_CLIENT_ID=saved-client-id", env_text)
+        self.assertIn("WECOM_STREAM_CLIENT_SECRET=saved-client-secret", env_text)
+        self.assertIn("WECOM_STREAM_BOT_ID=stock-analysis", env_text)
+
     def test_hermes_saved_secret_changed_port_does_not_send_request(self) -> None:
         self._rewrite_env(
             "STOCK_LIST=600519,000001",

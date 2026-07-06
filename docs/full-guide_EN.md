@@ -74,6 +74,10 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 | Secret Name | Description | Required |
 |------------|------|:----:|
 | `WECHAT_WEBHOOK_URL` | WeChat Work Webhook URL | Optional |
+| `WECOM_STREAM_ENABLED` | WeChat Work long-connection bot switch. It connects during `python main.py --serve` and does not replace `WECHAT_WEBHOOK_URL` | Optional |
+| `WECOM_STREAM_BOT_ID` | WeChat Work long-connection BotID | Optional |
+| `WECOM_STREAM_CLIENT_SECRET` | WeChat Work long-connection Secret (sensitive) | Optional |
+| `WECOM_STREAM_CLIENT_ID` | Legacy fallback used as BotID when `WECOM_STREAM_BOT_ID` is empty (sensitive) | Optional |
 | `FEISHU_WEBHOOK_URL` | Feishu Webhook URL | Optional |
 | `FEISHU_WEBHOOK_SECRET` | Feishu Webhook signing secret (required when “Signature” security is enabled) | Optional |
 | `FEISHU_WEBHOOK_KEYWORD` | Feishu Webhook keyword (required when “Keyword” security is enabled) | Optional |
@@ -238,6 +242,10 @@ For the notification baseline, diagnostics, and deployment notes, see [Notificat
 | Variable | Description | Required |
 |--------|------|:----:|
 | `WECHAT_WEBHOOK_URL` | WeChat Work Bot Webhook URL | Optional |
+| `WECOM_STREAM_ENABLED` | WeChat Work long-connection bot switch. It connects during `python main.py --serve` and does not change webhook delivery | Optional |
+| `WECOM_STREAM_BOT_ID` | WeChat Work long-connection BotID | Optional |
+| `WECOM_STREAM_CLIENT_SECRET` | WeChat Work long-connection Secret (sensitive) | Optional |
+| `WECOM_STREAM_CLIENT_ID` | Legacy fallback used as BotID when `WECOM_STREAM_BOT_ID` is empty (sensitive) | Optional |
 | `FEISHU_WEBHOOK_URL` | Feishu Bot Webhook URL | Optional |
 | `FEISHU_WEBHOOK_SECRET` | Feishu bot signing secret (only for webhook bots with Signature security enabled) | Optional |
 | `FEISHU_WEBHOOK_KEYWORD` | Feishu bot keyword (only for webhook bots with Keyword security enabled) | Optional |
@@ -829,6 +837,8 @@ The notification channel matrix and `--check-notify` CLI details are documented 
 1. Add "Group Bot" in WeChat Work group chat
 2. Copy Webhook URL
 3. Set `WECHAT_WEBHOOK_URL`
+
+The WeChat Work intelligent bot long connection uses `WECOM_STREAM_ENABLED`, `WECOM_STREAM_BOT_ID`, and `WECOM_STREAM_CLIENT_SECRET`; `WECOM_STREAM_CLIENT_ID` is kept only as a legacy BotID fallback. When enabled, `python main.py --serve` connects to the WeChat Work WebSocket. Group messages that mention the bot and private plain text are routed to `/chat`; explicit `/chat`, `/ask`, and `/help` commands are also supported. This does not add a `/bot/wecom` HTTP endpoint and does not change `WECHAT_WEBHOOK_URL` group bot webhook delivery.
 
 ### Feishu
 

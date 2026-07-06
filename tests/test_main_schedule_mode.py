@@ -5,11 +5,12 @@ import json
 import logging
 import os
 import socket
+import sys
 import tempfile
 import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from tests.litellm_stub import ensure_litellm_stub
@@ -118,6 +119,10 @@ class MainScheduleModeTestCase(unittest.TestCase):
             "webui_port": 8000,
             "dingtalk_stream_enabled": False,
             "feishu_stream_enabled": False,
+            "wecom_stream_enabled": False,
+            "wecom_stream_bot_id": None,
+            "wecom_stream_client_id": None,
+            "wecom_stream_client_secret": None,
             "schedule_enabled": False,
             "schedule_time": "18:00",
             "schedule_run_immediately": True,
@@ -878,6 +883,52 @@ class MainScheduleModeTestCase(unittest.TestCase):
         self.assertEqual(run_immediately_seen_by_server, [None])
         start_bots.assert_called_once_with(config)
         run_with_schedule.assert_not_called()
+
+    def test_start_bot_stream_clients_starts_wecom_when_credentials_complete(self) -> None:
+        config = self._make_config(
+            wecom_stream_enabled=True,
+            wecom_stream_bot_id="bot-1",
+            wecom_stream_client_secret="secret-1",
+        )
+        fake_platforms = ModuleType("bot.platforms")
+        fake_platforms.WECOM_STREAM_AVAILABLE = True
+        fake_platforms.start_wecom_stream_background = MagicMock(return_value=True)
+
+        with patch.dict(sys.modules, {"bot.platforms": fake_platforms}):
+            main.start_bot_stream_clients(config)
+
+        fake_platforms.start_wecom_stream_background.assert_called_once_with()
+
+    def test_start_bot_stream_clients_skips_wecom_when_secret_missing(self) -> None:
+        config = self._make_config(
+            wecom_stream_enabled=True,
+            wecom_stream_bot_id="bot-1",
+            wecom_stream_client_secret="",
+        )
+        fake_platforms = ModuleType("bot.platforms")
+        fake_platforms.WECOM_STREAM_AVAILABLE = True
+        fake_platforms.start_wecom_stream_background = MagicMock(return_value=True)
+
+        with patch.dict(sys.modules, {"bot.platforms": fake_platforms}):
+            main.start_bot_stream_clients(config)
+
+        fake_platforms.start_wecom_stream_background.assert_not_called()
+
+    def test_start_bot_stream_clients_accepts_wecom_client_id_fallback(self) -> None:
+        config = self._make_config(
+            wecom_stream_enabled=True,
+            wecom_stream_bot_id="",
+            wecom_stream_client_id="legacy-bot-id",
+            wecom_stream_client_secret="secret-1",
+        )
+        fake_platforms = ModuleType("bot.platforms")
+        fake_platforms.WECOM_STREAM_AVAILABLE = True
+        fake_platforms.start_wecom_stream_background = MagicMock(return_value=True)
+
+        with patch.dict(sys.modules, {"bot.platforms": fake_platforms}):
+            main.start_bot_stream_clients(config)
+
+        fake_platforms.start_wecom_stream_background.assert_called_once_with()
 
     def test_reload_runtime_config_preserves_process_env_overrides(self) -> None:
         self.env_path.write_text(

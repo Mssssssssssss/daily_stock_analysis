@@ -236,14 +236,20 @@ FEISHU_ENCRYPT_KEY=           # Encryption key (optional)
 DINGTALK_APP_KEY=
 DINGTALK_APP_SECRET=
 
-# --- WeChat Work bot (in development) ---
+# --- WeChat Work bot ---
 WECOM_TOKEN=
 WECOM_ENCODING_AES_KEY=
+WECOM_STREAM_ENABLED=false     # Long-connection bot switch; starts with python main.py --serve
+WECOM_STREAM_BOT_ID=           # Long-connection BotID
+WECOM_STREAM_CLIENT_SECRET=    # Long-connection Secret
+WECOM_STREAM_CLIENT_ID=        # Legacy BotID fallback
 
 # --- Telegram bot ---
 TELEGRAM_BOT_TOKEN=           # Get from @BotFather
 TELEGRAM_WEBHOOK_SECRET=      # Webhook secret token
 ```
+
+The WeChat Work long-connection bot uses `WECOM_STREAM_ENABLED`, `WECOM_STREAM_BOT_ID`, and `WECOM_STREAM_CLIENT_SECRET`; `WECOM_STREAM_CLIENT_ID` is kept only as a legacy BotID fallback. When enabled, `python main.py --serve` connects to `wss://openws.work.weixin.qq.com` and reuses the existing `/chat`, `/ask`, and `/help` commands. This does not add a `/bot/wecom` HTTP endpoint and does not change `WECHAT_WEBHOOK_URL` group bot webhook delivery.
 
 ---
 
