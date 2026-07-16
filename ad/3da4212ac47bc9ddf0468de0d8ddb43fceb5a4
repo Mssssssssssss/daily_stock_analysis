@@ -1,0 +1,62 @@
+src/services/history_loader.py
+  s_b42ac6a82c4ff2::t_7c07e8eb7a37dd 139-140,145-149,173-178,180-183,185-186
+  s_b42ac6a82c4ff2::t_986f5480d313ec 184
+tests/test_agent_runtime_context.py
+  s_b42ac6a82c4ff2::t_986f5480d313ec 14
+  s_b42ac6a82c4ff2::t_b0fd9a2dc2ca1b 1-13,15-46
+src/agent/tools/data_tools.py
+  s_b42ac6a82c4ff2::t_7c07e8eb7a37dd 13,238,246-248,251-252,275-276,278-280,313,350-351,361-364,369-391
+  s_b42ac6a82c4ff2::t_4fc2ff87ebec31 253
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 25,277,281-285
+tests/test_history_loader.py
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 80,82
+  s_b42ac6a82c4ff2::t_b0fd9a2dc2ca1b 81
+tests/test_data_tools_daily_history_cache.py
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 156,158,196,198,227,229
+  s_b42ac6a82c4ff2::t_b0fd9a2dc2ca1b 157,197,228
+src/core/trading_calendar.py
+  s_b42ac6a82c4ff2::t_f2f4c745a16c2c 142-146
+  s_b42ac6a82c4ff2::t_986f5480d313ec 17,166-172,182
+  s_b42ac6a82c4ff2::t_bbcaac6ade3bf5 173-181
+  s_b42ac6a82c4ff2::t_7c07e8eb7a37dd 126-141,147-165,183-225
+src/agent/executor.py
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 669-674
+  s_b42ac6a82c4ff2::t_a6201e19f50a85 35-36,532-540,591-610,698,718-730
+docs/full-guide.md
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 850
+src/agent/orchestrator.py
+  s_b42ac6a82c4ff2::t_38bf58b8163ebe 287-294,325-348,351-352,390-402
+  s_b42ac6a82c4ff2::t_a6201e19f50a85 50-51
+docs/CHANGELOG.md
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 11
+src/agent/tools/market_tools.py
+  s_b42ac6a82c4ff2::t_28486322b1a5fd 11,33,35-40,46-48,80,82-87,93,98,100-125
+src/market_phase_prompt.py
+  s_b42ac6a82c4ff2::t_38bf58b8163ebe 101,109-110,125,133-134
+src/core/pipeline.py
+  s_b42ac6a82c4ff2::t_efa99e864697ee 344-350,355-360
+  s_b42ac6a82c4ff2::t_3f6014cb0e223b 1201-1206,1208-1213
+docs/full-guide_EN.md
+  s_b42ac6a82c4ff2::t_54a6200a016032 715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ad3da4212ac47bc9ddf0468de0d8ddb43fceb5a4",
+  "prompts": {},
+  "humans": {
+    "h_61736b81480f1a": {
+      "author": "shuaima1 <417806467@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_b42ac6a82c4ff2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f68f4-d13c-7b60-a249-908c00d58734",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "shuaima1 <417806467@qq.com>"
+    }
+  }
+}
