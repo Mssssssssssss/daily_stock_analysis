@@ -585,8 +585,6 @@ class AgentExecutor:
         Returns:
             AgentResult with the text response.
         """
-        from src.agent.conversation import conversation_manager
-
         scope_resolution = resolve_stock_scope(message, context)
         context, frozen_token = self._with_runtime_context(
             message, scope_resolution.effective_context,
@@ -608,6 +606,7 @@ class AgentExecutor:
         stock_scope: Optional[StockScope],
     ) -> AgentResult:
         """Run chat after server-owned timing fields have been installed."""
+        from src.agent.conversation import conversation_manager
 
         # Build system prompt with skills
         skills_section = ""
