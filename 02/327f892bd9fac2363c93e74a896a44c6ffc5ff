@@ -1,0 +1,24 @@
+src/agent/executor.py
+  s_b42ac6a82c4ff2::t_39d655b507e1de 609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "02327f892bd9fac2363c93e74a896a44c6ffc5ff",
+  "prompts": {},
+  "humans": {
+    "h_61736b81480f1a": {
+      "author": "shuaima1 <417806467@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_b42ac6a82c4ff2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f68f4-d13c-7b60-a249-908c00d58734",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "shuaima1 <417806467@qq.com>"
+    }
+  }
+}
