@@ -1,0 +1,44 @@
+docs/CHANGELOG.md
+  s_374290bec35665::t_b49a175ceb11d4 13
+src/agent/executor.py
+  s_374290bec35665::t_69779d9447deca 914-925
+  s_374290bec35665::t_e9e463c393b400 33-36,567,638,730-736
+tests/test_agent_executor.py
+  s_374290bec35665::t_a24ce0b46d6d00 192-215,217
+  s_374290bec35665::t_b49a175ceb11d4 216
+tests/test_multi_agent.py
+  s_374290bec35665::t_45c64570870682 1526-1545
+src/agent/agents/base_agent.py
+  s_374290bec35665::t_e9e463c393b400 24-27,166-173
+src/market_phase_prompt.py
+  s_374290bec35665::t_e9e463c393b400 70-119,152,161-162,178,187-188
+tests/test_market_phase_prompt.py
+  s_374290bec35665::t_45c64570870682 6-9,57-67
+src/agent/orchestrator.py
+  s_374290bec35665::t_e9e463c393b400 398-404
+src/core/trading_calendar.py
+  s_374290bec35665::t_e9e463c393b400 150,160-162
+tests/test_agent_runtime_context.py
+  s_374290bec35665::t_45c64570870682 36-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "1e16d9063623bd9c2b65a9697f6bc4a345d1c56a",
+  "prompts": {},
+  "humans": {
+    "h_61736b81480f1a": {
+      "author": "shuaima1 <417806467@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_374290bec35665": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6a49-38c0-7a40-bdcd-a19826a292d3",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "shuaima1 <417806467@qq.com>"
+    }
+  }
+}
