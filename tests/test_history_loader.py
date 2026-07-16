@@ -77,7 +77,9 @@ class HistoryLoaderTestCase(unittest.TestCase):
 
         self.assertIsNotNone(df)
         self.assertEqual(source, "eastmoney")
-        mock_fm.get_daily_data.assert_called_once_with("600519", days=60)
+        mock_fm.get_daily_data.assert_called_once_with(
+            "600519", days=60, start_date="2025-12-21", end_date="2026-04-18",
+        )
 
     # ------------------------------------------------------------------
     # ContextVar integration

@@ -98,6 +98,7 @@ def _metadata_lines_zh(ctx: Dict[str, Any]) -> List[str]:
     market = _string_value(ctx.get("market"))
     market_time = _string_value(ctx.get("market_local_time"))
     effective_date = _string_value(ctx.get("effective_daily_bar_date"))
+    natural_date = _string_value(ctx.get("market_natural_date") or ctx.get("session_date"))
     minutes_to_open = _int_like(ctx.get("minutes_to_open"))
     minutes_to_close = _int_like(ctx.get("minutes_to_close"))
 
@@ -105,6 +106,8 @@ def _metadata_lines_zh(ctx: Dict[str, Any]) -> List[str]:
         items.append(f"- 市场：{market}")
     if market_time:
         items.append(f"- 市场本地时间：{market_time}")
+    if natural_date:
+        items.append(f"- “今天”指该市场自然日：{natural_date}")
     if effective_date:
         items.append(f"- 最新可复用完整日线日期：{effective_date}")
     if minutes_to_open is not None:
@@ -119,6 +122,7 @@ def _metadata_lines_en(ctx: Dict[str, Any]) -> List[str]:
     market = _string_value(ctx.get("market"))
     market_time = _string_value(ctx.get("market_local_time"))
     effective_date = _string_value(ctx.get("effective_daily_bar_date"))
+    natural_date = _string_value(ctx.get("market_natural_date") or ctx.get("session_date"))
     minutes_to_open = _int_like(ctx.get("minutes_to_open"))
     minutes_to_close = _int_like(ctx.get("minutes_to_close"))
 
@@ -126,6 +130,8 @@ def _metadata_lines_en(ctx: Dict[str, Any]) -> List[str]:
         items.append(f"- Market: {market}")
     if market_time:
         items.append(f"- Market-local time: {market_time}")
+    if natural_date:
+        items.append(f"- 'Today' means this market's natural date: {natural_date}")
     if effective_date:
         items.append(f"- Latest reusable complete daily bar date: {effective_date}")
     if minutes_to_open is not None:

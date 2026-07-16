@@ -136,12 +136,17 @@ def load_history_df(
     """
     from src.storage import get_db
 
-    # Resolve effective end date
+    # Resolve the latest complete bar in the security's own market.  This
+    # avoids the server's calendar date leaking into US/HK requests.
     if target_date is not None:
         end = target_date
     else:
         frozen = get_frozen_target_date()
-        end = frozen if frozen else date.today()
+        if frozen:
+            end = frozen
+        else:
+            from src.core.trading_calendar import get_effective_trading_date, get_market_for_stock
+            end = get_effective_trading_date(get_market_for_stock(stock_code))
 
     # Calendar-day buffer: ~1.8x trading days + margin for long holidays
     start = end - timedelta(days=int(days * 1.8) + 10)
@@ -165,8 +170,20 @@ def load_history_df(
     # --- 2. Network fallback via singleton DataFetcherManager -------------
     try:
         manager = _get_fetcher_manager()
-        df, source = manager.get_daily_data(stock_code, days=days)
+        df, source = manager.get_daily_data(
+            stock_code,
+            days=days,
+            start_date=start.strftime("%Y-%m-%d"),
+            end_date=end.strftime("%Y-%m-%d"),
+        )
         if df is not None and not df.empty:
+            date_column = next((column for column in ("date", "trade_date") if column in df.columns), None)
+            if date_column:
+                normalized_dates = pd.to_datetime(df[date_column], errors="coerce")
+                df = df.loc[normalized_dates.dt.date <= end].copy()
+                df = df.sort_values(date_column).reset_index(drop=True)
+            if df.empty:
+                return None, "none"
             return df, source
     except Exception as e:
         logger.warning("load_history_df(%s): DataFetcherManager failed: %s", stock_code, e)

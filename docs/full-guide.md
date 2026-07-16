@@ -847,7 +847,7 @@ P1b 不改 Prompt、不新增 `analysis_phase` 请求参数、不做 Web 阶段�
 
 P2-min 开始在已获得 `market_phase_context` 的分析路径中，把运行态市场阶段渲染为 LLM 可读的 Prompt 区块。普通分析、single Agent 和 multi-agent 会在 Prompt 中看到当前阶段、市场本地时间、最新可复用完整日线日期以及最小阶段约束：盘前不得描述“今日走势已经发生”，盘中 / 午间 / 临近收盘需说明最后一根日线可能未完成，盘后保留完整交易日复盘语义，非交易日或未知阶段保持保守表述。
 
-P2-min 仍不新增 API/Web/Bot 参数，不写入 history/task status/report metadata，不改变报告 JSON schema，也不引入完整 quote freshness、fallback、stale 或 data_quality 契约。Bot/API 直连 Agent 若未经过 P1a pipeline 构建 `market_phase_context`，仍保持旧行为；入口透传和可见展示留给后续 P4+。
+Agent API、Bot 以及单/多 Agent 直连入口也会在每个请求开始时由服务端冻结市场本地时间与最新完整日线日期；客户端 `context` 中的同名时间字段不会覆盖该值。对话中的“今天”指证券所属市场的自然日（未指定市场的大盘问题默认 A 股），日线结论只能引用冻结的最新完整日线。实时、历史和大盘工具会返回获取时间、来源及可用时的提供方时间；缺少或过期时效只能作为历史参考，回答必须说明数据截至日期/获取时间和限制，不能表述为“今天实时行情”。
 
 #### 盘中数据包与实时质量控制（Issue #1386 P3）
 

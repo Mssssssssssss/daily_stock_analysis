@@ -47,6 +47,8 @@ from src.agent.tools.registry import ToolRegistry
 from src.agent.chat_context import build_visible_chat_history
 from src.config import AGENT_MAX_STEPS_DEFAULT, get_config
 from src.report_language import normalize_report_language
+from src.core.trading_calendar import build_agent_runtime_context
+from src.services.history_loader import reset_frozen_target_date, set_frozen_target_date
 
 if TYPE_CHECKING:
     from src.agent.executor import AgentResult
@@ -282,9 +284,14 @@ class AgentOrchestrator:
         """
         from src.agent.executor import AgentResult
 
-        ctx = self._build_context(task, context)
-        ctx.meta["response_mode"] = "dashboard"
-        orch_result = self._execute_pipeline(ctx, parse_dashboard=True)
+        context, frozen_token = self._with_runtime_context(task, context)
+        try:
+            ctx = self._build_context(task, context)
+            ctx.meta["response_mode"] = "dashboard"
+            orch_result = self._execute_pipeline(ctx, parse_dashboard=True)
+        finally:
+            if frozen_token is not None:
+                reset_frozen_target_date(frozen_token)
 
         return AgentResult(
             success=orch_result.success,
@@ -315,11 +322,34 @@ class AgentOrchestrator:
         from src.agent.conversation import conversation_manager
 
         scope_resolution = resolve_stock_scope(message, context)
-        ctx = self._build_context(message, scope_resolution.effective_context)
+        context, frozen_token = self._with_runtime_context(
+            message, scope_resolution.effective_context,
+        )
+        try:
+            return self._chat_with_runtime_context(
+                message, session_id, progress_callback, context, scope_resolution.stock_scope,
+            )
+        finally:
+            if frozen_token is not None:
+                reset_frozen_target_date(frozen_token)
+
+    def _chat_with_runtime_context(
+        self,
+        message: str,
+        session_id: str,
+        progress_callback: Optional[Callable],
+        context: Dict[str, Any],
+        stock_scope: Optional[Any],
+    ) -> "AgentResult":
+        """Run chat while the server-owned history target date is installed."""
+        from src.agent.executor import AgentResult
+        from src.agent.conversation import conversation_manager
+
+        ctx = self._build_context(message, context)
         ctx.session_id = session_id
         ctx.meta["response_mode"] = "chat"
-        if scope_resolution.stock_scope is not None:
-            ctx.meta["stock_scope"] = scope_resolution.stock_scope
+        if stock_scope is not None:
+            ctx.meta["stock_scope"] = stock_scope
 
         conversation_manager.get_or_create(session_id)
         config = self.config or getattr(self.llm_adapter, "_config", None) or get_config()
@@ -356,6 +386,20 @@ class AgentOrchestrator:
             model=orch_result.model,
             error=orch_result.error,
         )
+
+    @staticmethod
+    def _with_runtime_context(
+        task: str, context: Optional[Dict[str, Any]],
+    ) -> tuple[Dict[str, Any], Optional[Any]]:
+        """Install a request-frozen context without trusting client time fields."""
+        merged = dict(context or {})
+        runtime = build_agent_runtime_context(task=task, context=merged, trigger_source="orchestrator")
+        payload = runtime.to_dict()
+        merged["agent_runtime_context"] = payload
+        merged["market_phase_context"] = payload
+        if runtime.latest_complete_daily_bar_date is None:
+            return merged, None
+        return merged, set_frozen_target_date(runtime.latest_complete_daily_bar_date)
 
     # -----------------------------------------------------------------
     # Pipeline execution

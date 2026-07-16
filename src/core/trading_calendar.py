@@ -14,6 +14,7 @@
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from enum import Enum
@@ -120,6 +121,106 @@ class MarketPhaseContext:
             "analysis_intent": self.analysis_intent,
             "warnings": list(self.warnings),
         }
+
+
+@dataclass
+class AgentRuntimeContext:
+    """Authoritative, per-request time context for Agent data access.
+
+    The value is built on the server once and must not be replaced by a
+    client-provided context payload.  It deliberately keeps the existing
+    ``market_phase_context`` shape available for older prompt consumers.
+    """
+
+    market: Optional[str]
+    market_phase_context: MarketPhaseContext
+    frozen_at: datetime
+    latest_complete_daily_bar_date: Optional[date]
+
+    def to_dict(self) -> Dict[str, Any]:
+        payload = self.market_phase_context.to_dict()
+        if self.latest_complete_daily_bar_date is None:
+            # ``build_market_phase_context`` retains its legacy fail-open date
+            # for pipeline compatibility.  Agent prompts must not mislabel
+            # that natural date as a verified completed daily bar.
+            payload["effective_daily_bar_date"] = None
+        payload.update({
+            "frozen_at": self.frozen_at.isoformat(),
+            "market_natural_date": self.market_phase_context.session_date.isoformat(),
+            "latest_complete_daily_bar_date": (
+                self.latest_complete_daily_bar_date.isoformat()
+                if self.latest_complete_daily_bar_date else None
+            ),
+            "calendar_available": _XCALS_AVAILABLE,
+        })
+        return payload
+
+
+def resolve_agent_market(
+    task: str = "", context: Optional[Dict[str, Any]] = None,
+) -> str:
+    """Resolve the market for an Agent request, defaulting market-wide asks to CN."""
+    context = context or {}
+    for value in (context.get("stock_code"), context.get("code")):
+        market = get_market_for_stock(str(value or ""))
+        if market:
+            return market
+
+    # Direct Agent calls do not always carry a populated context.  Recognize
+    # the common symbols in the request before treating it as a market-wide
+    # question.  Keep this intentionally conservative to avoid interpreting
+    # arbitrary prose as a US ticker.
+    for candidate in re.findall(
+        r"(?<![A-Za-z0-9])(?:HK\d{5}|\d{4,6}\.HK|\d{6}|[A-Z]{1,5})(?![A-Za-z0-9])",
+        task,
+        flags=re.IGNORECASE,
+    ):
+        # A generic English word becomes all-uppercase only after normalization;
+        # accept letter symbols only when the user actually supplied a ticker.
+        if candidate.isalpha() and candidate != candidate.upper():
+            continue
+        market = get_market_for_stock(candidate)
+        if market:
+            return market
+
+    text = " ".join(str(item or "") for item in (task, context.get("stock_name"))).lower()
+    # Explicit market-wide wording takes precedence when no code was supplied.
+    if any(word in text for word in ("港股", "恒生", "h股", "hong kong")):
+        return "hk"
+    if any(word in text for word in ("美股", "纳斯达克", "标普", "道琼斯", "us market", "u.s. market")):
+        return "us"
+    return "cn"
+
+
+def build_agent_runtime_context(
+    *,
+    task: str = "",
+    context: Optional[Dict[str, Any]] = None,
+    current_time: Optional[datetime] = None,
+    trigger_source: str = "agent",
+) -> AgentRuntimeContext:
+    """Freeze one market-local clock and its latest complete daily-bar date.
+
+    When the exchange calendar is unavailable, ``latest_complete_daily_bar_date``
+    is intentionally ``None``.  Callers can still show the local natural day,
+    but must not claim that it is a completed trading session.
+    """
+    market = resolve_agent_market(task, context)
+    phase_context = build_market_phase_context(
+        market=market,
+        current_time=current_time,
+        trigger_source=trigger_source,
+    )
+    frozen_at = phase_context.market_local_time
+    latest_date = phase_context.effective_daily_bar_date if _XCALS_AVAILABLE else None
+    if not _XCALS_AVAILABLE:
+        _add_warning_code(phase_context.warnings, "calendar_unavailable")
+    return AgentRuntimeContext(
+        market=market,
+        market_phase_context=phase_context,
+        frozen_at=frozen_at,
+        latest_complete_daily_bar_date=latest_date,
+    )
 
 
 def get_market_for_stock(code: str) -> Optional[str]:

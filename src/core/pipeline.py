@@ -341,10 +341,23 @@ class StockAnalysisPipeline:
 
             # 从数据源获取数据
             logger.info(f"{stock_name}({code}) 开始从数据源获取数据...")
-            df, source_name = self.fetcher_manager.get_daily_data(code, days=30)
+            start_date = target_date - timedelta(days=int(30 * 1.8) + 10)
+            df, source_name = self.fetcher_manager.get_daily_data(
+                code,
+                days=30,
+                start_date=start_date.strftime("%Y-%m-%d"),
+                end_date=target_date.strftime("%Y-%m-%d"),
+            )
 
             if df is None or df.empty:
                 return False, "获取数据为空"
+
+            date_column = next((name for name in ("date", "trade_date") if name in df.columns), None)
+            if date_column:
+                parsed_dates = pd.to_datetime(df[date_column], errors="coerce")
+                df = df.loc[parsed_dates.dt.date <= target_date].copy()
+                if df.empty:
+                    return False, "获取数据未包含目标交易日以前的完整日线"
 
             # 保存到数据库
             saved_count = self.db.save_daily_data(df, code, source_name)
@@ -1185,8 +1198,19 @@ class StockAnalysisPipeline:
             logger.debug("[%s] Agent history: %d bars in DB, sufficient", code, len(bars))
             return
         try:
-            df, source = self.fetcher_manager.get_daily_data(code, days=min_days)
+            df, source = self.fetcher_manager.get_daily_data(
+                code,
+                days=min_days,
+                start_date=start.strftime("%Y-%m-%d"),
+                end_date=target.strftime("%Y-%m-%d"),
+            )
             if df is not None and not df.empty:
+                date_column = next((name for name in ("date", "trade_date") if name in df.columns), None)
+                if date_column:
+                    parsed_dates = pd.to_datetime(df[date_column], errors="coerce")
+                    df = df.loc[parsed_dates.dt.date <= target].copy()
+                if df.empty:
+                    return
                 self.db.save_daily_data(df, code, source)
                 logger.info("[%s] Prefetched %d rows of history for agent (source: %s)", code, len(df), source)
         except Exception as e:

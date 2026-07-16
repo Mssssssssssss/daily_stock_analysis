@@ -32,6 +32,8 @@ from src.report_language import normalize_report_language
 from src.market_context import get_market_role, get_market_guidelines
 from src.market_phase_prompt import format_market_phase_prompt_section
 from src.services.daily_market_context import format_daily_market_context_prompt_section
+from src.core.trading_calendar import build_agent_runtime_context
+from src.services.history_loader import reset_frozen_target_date, set_frozen_target_date
 
 logger = logging.getLogger(__name__)
 
@@ -527,6 +529,15 @@ class AgentExecutor:
         Returns:
             AgentResult with parsed dashboard or error.
         """
+        context, frozen_token = self._with_runtime_context(task, context)
+        try:
+            return self._run_with_context(task, context)
+        finally:
+            if frozen_token is not None:
+                reset_frozen_target_date(frozen_token)
+
+    def _run_with_context(self, task: str, context: Dict[str, Any]) -> AgentResult:
+        """Run the dashboard flow after the server runtime context is frozen."""
         # Build system prompt with skills
         skills_section = ""
         if self.skill_instructions:
@@ -577,7 +588,26 @@ class AgentExecutor:
         from src.agent.conversation import conversation_manager
 
         scope_resolution = resolve_stock_scope(message, context)
-        context = scope_resolution.effective_context
+        context, frozen_token = self._with_runtime_context(
+            message, scope_resolution.effective_context,
+        )
+        try:
+            return self._chat_with_context(
+                message, session_id, progress_callback, context, scope_resolution.stock_scope,
+            )
+        finally:
+            if frozen_token is not None:
+                reset_frozen_target_date(frozen_token)
+
+    def _chat_with_context(
+        self,
+        message: str,
+        session_id: str,
+        progress_callback: Optional[Callable],
+        context: Dict[str, Any],
+        stock_scope: Optional[StockScope],
+    ) -> AgentResult:
+        """Run chat after server-owned timing fields have been installed."""
 
         # Build system prompt with skills
         skills_section = ""
@@ -636,6 +666,12 @@ class AgentExecutor:
                 strategy = context["previous_strategy"]
                 strategy_text = json.dumps(strategy, ensure_ascii=False) if isinstance(strategy, dict) else str(strategy)
                 context_parts.append(f"上次策略分析:\n{strategy_text}")
+            market_phase_section = format_market_phase_prompt_section(
+                context.get("market_phase_context"),
+                report_language=report_language,
+            )
+            if market_phase_section:
+                context_parts.append(market_phase_section.strip())
             daily_market_context_section = format_daily_market_context_prompt_section(
                 context.get("daily_market_context"),
                 report_language=report_language,
@@ -659,7 +695,7 @@ class AgentExecutor:
             tool_decls,
             parse_dashboard=False,
             progress_callback=progress_callback,
-            stock_scope=scope_resolution.stock_scope,
+            stock_scope=stock_scope,
         )
 
         # Persist assistant reply (or error note) for context continuity
@@ -678,6 +714,20 @@ class AgentExecutor:
             conversation_manager.add_message(session_id, "assistant", error_note)
 
         return result
+
+    @staticmethod
+    def _with_runtime_context(
+        task: str, context: Optional[Dict[str, Any]],
+    ) -> tuple[Dict[str, Any], Optional[Any]]:
+        """Protect runtime date fields from client context and freeze history I/O."""
+        merged = dict(context or {})
+        runtime = build_agent_runtime_context(task=task, context=merged)
+        runtime_payload = runtime.to_dict()
+        merged["agent_runtime_context"] = runtime_payload
+        merged["market_phase_context"] = runtime_payload
+        if runtime.latest_complete_daily_bar_date is None:
+            return merged, None
+        return merged, set_frozen_target_date(runtime.latest_complete_daily_bar_date)
 
     def _persist_provider_trace(
         self,

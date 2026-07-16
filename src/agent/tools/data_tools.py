@@ -10,7 +10,7 @@ Tools:
 """
 
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from threading import Lock
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -22,6 +22,7 @@ _fetcher_manager_singleton = None
 _fetcher_manager_lock = Lock()
 _DAILY_HISTORY_DEFAULT_DAYS = 60
 _DAILY_HISTORY_MAX_DAYS = 365
+_REALTIME_STALE_AFTER_SECONDS = 300
 
 
 def _get_fetcher_manager():
@@ -234,6 +235,7 @@ def _compact_portfolio_risk(risk: dict, top_n: int = 10) -> dict:
 
 def _handle_get_realtime_quote(stock_code: str) -> dict:
     """Get real-time stock quote."""
+    fetched_at = datetime.now(timezone.utc).isoformat()
     manager = _get_fetcher_manager()
     quote = manager.get_realtime_quote(stock_code)
     if quote is None:
@@ -241,8 +243,14 @@ def _handle_get_realtime_quote(stock_code: str) -> dict:
             "error": f"No realtime quote available for {stock_code}",
             "retriable": False,
             "note": "All data sources unavailable (network or circuit-breaker). Skip this tool and proceed with historical data only.",
+            "fetched_at": fetched_at,
+            "market": _get_market(stock_code),
+            "data_quality": "unavailable",
         }
 
+    provider_timestamp = _quote_timestamp(quote)
+    stale_seconds = _stale_seconds(provider_timestamp)
+    is_stale = stale_seconds is None or stale_seconds > _REALTIME_STALE_AFTER_SECONDS
     return {
         "code": quote.code,
         "name": quote.name,
@@ -264,6 +272,17 @@ def _handle_get_realtime_quote(stock_code: str) -> dict:
         "circ_mv": quote.circ_mv,
         "change_60d": quote.change_60d,
         "source": quote.source.value if hasattr(quote.source, 'value') else str(quote.source),
+        "fetched_at": fetched_at,
+        "provider_timestamp": provider_timestamp,
+        "is_stale": is_stale,
+        "stale_seconds": stale_seconds,
+        "fallback_from": getattr(quote, "fallback_from", None),
+        "market": _get_market(stock_code),
+        "data_quality": (
+            "stale" if stale_seconds is not None and is_stale
+            else "realtime" if stale_seconds is not None
+            else "timestamp_unverified"
+        ),
     }
 
 
@@ -291,7 +310,7 @@ def _handle_get_daily_history(stock_code: str, days: int = 60) -> dict:
     """Get daily OHLCV history data."""
     effective_days, metadata = _normalize_history_days(days)
 
-    from src.services.history_loader import load_history_df
+    from src.services.history_loader import get_frozen_target_date, load_history_df
     df, source = load_history_df(stock_code, days=effective_days)
 
     if df is None or df.empty:
@@ -328,6 +347,8 @@ def _handle_get_daily_history(stock_code: str, days: int = 60) -> dict:
     if source == "db_cache" and records:
         response_code = records[-1].get("code") or response_code
 
+    target_date = get_frozen_target_date()
+    latest_bar_date = records[-1].get("date") if records else None
     return _append_history_metadata({
         "code": response_code,
         "source": source,
@@ -337,8 +358,37 @@ def _handle_get_daily_history(stock_code: str, days: int = 60) -> dict:
         "actual_records": len(records),
         "partial_cache": source == "db_cache" and len(records) < effective_days,
         "total_records": len(records),
+        "target_date": target_date.isoformat() if target_date else None,
+        "latest_bar_date": latest_bar_date,
+        "market": _get_market(stock_code),
+        "is_complete_daily_bar": bool(target_date and latest_bar_date and str(latest_bar_date)[:10] <= target_date.isoformat()),
         "data": records,
     }, metadata)
+
+
+def _get_market(stock_code: str) -> Optional[str]:
+    from src.core.trading_calendar import get_market_for_stock
+    return get_market_for_stock(stock_code)
+
+
+def _quote_timestamp(quote: Any) -> Optional[str]:
+    for field in ("provider_timestamp", "timestamp", "time", "datetime", "date"):
+        value = getattr(quote, field, None)
+        if value:
+            return value.isoformat() if hasattr(value, "isoformat") else str(value)
+    return None
+
+
+def _stale_seconds(value: Optional[str]) -> Optional[int]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return None
+        return max(0, int((datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()))
+    except (TypeError, ValueError):
+        return None
 
 
 get_daily_history_tool = ToolDefinition(

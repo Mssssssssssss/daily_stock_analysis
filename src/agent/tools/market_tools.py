@@ -8,6 +8,7 @@ Tools:
 """
 
 import logging
+from datetime import datetime, timezone
 
 from src.agent.tools.registry import ToolParameter, ToolDefinition
 
@@ -29,13 +30,22 @@ def _handle_get_market_indices(region: str = "cn") -> dict:
     manager = _get_fetcher_manager()
     indices = manager.get_main_indices(region=region)
 
+    fetched_at = datetime.now(timezone.utc).isoformat()
     if not indices:
-        return {"error": f"No market index data available for region '{region}'"}
+        return {
+            "error": f"No market index data available for region '{region}'",
+            "fetched_at": fetched_at,
+            "source": None,
+            "provider_timestamp_missing": True,
+        }
 
     return {
         "region": region,
         "indices_count": len(indices),
         "indices": indices,
+        "fetched_at": fetched_at,
+        "source": _extract_source(indices),
+        "provider_timestamp_missing": not _has_provider_timestamp(indices),
     }
 
 
@@ -67,21 +77,52 @@ def _handle_get_sector_rankings(top_n: int = 10) -> dict:
     manager = _get_fetcher_manager()
     result = manager.get_sector_rankings(n=top_n)
 
+    fetched_at = datetime.now(timezone.utc).isoformat()
     if result is None:
-        return {"error": "No sector ranking data available"}
+        return {
+            "error": "No sector ranking data available",
+            "fetched_at": fetched_at,
+            "source": None,
+            "provider_timestamp_missing": True,
+        }
 
     # get_sector_rankings returns Tuple[List[Dict], List[Dict]]
     # (top_sectors, bottom_sectors)
     if isinstance(result, tuple) and len(result) == 2:
         top_sectors, bottom_sectors = result
-        return {
+        payload = {
             "top_sectors": top_sectors,
             "bottom_sectors": bottom_sectors,
         }
     elif isinstance(result, list):
-        return {"sectors": result}
+        payload = {"sectors": result}
     else:
-        return {"data": str(result)}
+        payload = {"data": str(result)}
+    payload.update({
+        "fetched_at": fetched_at,
+        "source": _extract_source(result),
+        "provider_timestamp_missing": not _has_provider_timestamp(result),
+    })
+    return payload
+
+
+def _extract_source(payload):
+    if isinstance(payload, dict):
+        return payload.get("source")
+    if isinstance(payload, (list, tuple)):
+        for item in payload:
+            source = _extract_source(item)
+            if source:
+                return source
+    return None
+
+
+def _has_provider_timestamp(payload) -> bool:
+    if isinstance(payload, dict):
+        return any(payload.get(key) for key in ("provider_timestamp", "timestamp", "time", "datetime"))
+    if isinstance(payload, (list, tuple)):
+        return any(_has_provider_timestamp(item) for item in payload)
+    return False
 
 
 get_sector_rankings_tool = ToolDefinition(
