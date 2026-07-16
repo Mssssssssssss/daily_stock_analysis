@@ -1,0 +1,26 @@
+docs/DEPLOY.md
+  s_b42ac6a82c4ff2::t_5a6865fdfa6814 153-155
+docs/CHANGELOG.md
+  s_b42ac6a82c4ff2::t_5a6865fdfa6814 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ca1500f8c7cdd2ac315db2163394049e0a7672a1",
+  "prompts": {},
+  "humans": {
+    "h_61736b81480f1a": {
+      "author": "shuaima1 <417806467@qq.com>"
+    }
+  },
+  "sessions": {
+    "s_b42ac6a82c4ff2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f68f4-d13c-7b60-a249-908c00d58734",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "shuaima1 <417806467@qq.com>"
+    }
+  }
+}
