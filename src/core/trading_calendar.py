@@ -147,6 +147,7 @@ class AgentRuntimeContext:
         payload.update({
             "frozen_at": self.frozen_at.isoformat(),
             "market_natural_date": self.market_phase_context.session_date.isoformat(),
+            "market_weekday": _format_weekday_zh(self.market_phase_context.session_date),
             "latest_complete_daily_bar_date": (
                 self.latest_complete_daily_bar_date.isoformat()
                 if self.latest_complete_daily_bar_date else None
@@ -154,6 +155,11 @@ class AgentRuntimeContext:
             "calendar_available": _XCALS_AVAILABLE,
         })
         return payload
+
+
+def _format_weekday_zh(value: date) -> str:
+    """Return the server-owned Chinese weekday label for a market date."""
+    return ("星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日")[value.weekday()]
 
 
 def resolve_agent_market(

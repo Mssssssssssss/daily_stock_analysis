@@ -21,7 +21,10 @@ from src.agent.protocols import AgentContext, AgentOpinion, StageResult, StageSt
 from src.agent.runner import RunLoopResult, run_agent_loop
 from src.agent.skills.defaults import extract_skill_id
 from src.agent.tools.registry import ToolRegistry
-from src.market_phase_prompt import format_market_phase_prompt_section
+from src.market_phase_prompt import (
+    format_market_date_system_constraint,
+    format_market_phase_prompt_section,
+)
 from src.report_language import normalize_report_language
 from src.services.daily_market_context import format_daily_market_context_prompt_section
 
@@ -160,9 +163,14 @@ class BaseAgent(ABC):
 
     def _build_messages(self, ctx: AgentContext) -> List[Dict[str, Any]]:
         """Assemble the initial messages list for the LLM."""
-        messages: List[Dict[str, Any]] = [
-            {"role": "system", "content": self.system_prompt(ctx)},
-        ]
+        report_language = normalize_report_language(ctx.meta.get("report_language", "zh"))
+        system_prompt = self.system_prompt(ctx)
+        date_constraint = format_market_date_system_constraint(
+            ctx.meta.get("market_phase_context"), report_language=report_language,
+        )
+        if date_constraint:
+            system_prompt = f"{system_prompt}\n\n{date_constraint}"
+        messages: List[Dict[str, Any]] = [{"role": "system", "content": system_prompt}]
 
         history = ctx.meta.get("conversation_history")
         if isinstance(history, list):
@@ -174,7 +182,6 @@ class BaseAgent(ABC):
                 if role in {"user", "assistant", "system"} and isinstance(content, str) and content:
                     messages.append({"role": role, "content": content})
 
-        report_language = normalize_report_language(ctx.meta.get("report_language", "zh"))
         market_phase_section = format_market_phase_prompt_section(
             ctx.meta.get("market_phase_context"),
             report_language=report_language,

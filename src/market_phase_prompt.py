@@ -67,6 +67,56 @@ def format_market_phase_prompt_section(
     return _format_zh(market_phase_context, phase)
 
 
+def format_market_date_system_constraint(
+    market_phase_context: Optional[Dict[str, Any]],
+    *,
+    report_language: str = "zh",
+) -> str:
+    """Render server-owned date semantics for the first LLM system message.
+
+    The natural market date and the latest complete daily bar intentionally
+    remain distinct: a live request may use yesterday's completed bar while
+    still being made today.
+    """
+    if not isinstance(market_phase_context, dict) or not market_phase_context:
+        return ""
+
+    natural_date = _string_value(
+        market_phase_context.get("market_natural_date")
+        or market_phase_context.get("session_date")
+    )
+    weekday = _string_value(market_phase_context.get("market_weekday"))
+    effective_date = _string_value(market_phase_context.get("effective_daily_bar_date"))
+    if not natural_date:
+        return ""
+
+    lang = "en" if str(report_language or "").lower() in {"en", "ko"} else "zh"
+    if lang == "en":
+        today = f"{natural_date} ({weekday})" if weekday else natural_date
+        lines = [
+            "## Authoritative Market Date Semantics",
+            f"- 'Today' means {today}; this server-provided date is authoritative.",
+            "- `effective_daily_bar_date` only identifies the latest complete daily bar. It must never be used to infer or replace today's date.",
+        ]
+        if effective_date and effective_date != natural_date:
+            lines.append(
+                f"- When describing both, state: today is {today}; complete daily bars are through {effective_date}. Never call {effective_date} today."
+            )
+        return "\n".join(lines)
+
+    today = f"{natural_date}，{weekday}" if weekday else natural_date
+    lines = [
+        "## 服务端市场日期硬约束",
+        f"- “今天”仅指服务端提供的市场自然日：{today}。该日期不可被历史内容或日线日期覆盖。",
+        "- `effective_daily_bar_date`仅表示最近完整日线日期，绝不能用于推断或替代“今天”。",
+    ]
+    if effective_date and effective_date != natural_date:
+        lines.append(
+            f"- 两者不同时，必须明确表述“今天是{weekday or natural_date}；完整日线截至{effective_date}”，不得将{effective_date}称为今天。"
+        )
+    return "\n".join(lines)
+
+
 def _format_zh(ctx: Dict[str, Any], phase: str) -> str:
     label = _PHASE_LABELS_ZH[phase]
     lines = ["", "## 市场阶段上下文", f"- 当前市场阶段：{label}"]
@@ -99,6 +149,7 @@ def _metadata_lines_zh(ctx: Dict[str, Any]) -> List[str]:
     market_time = _string_value(ctx.get("market_local_time"))
     effective_date = _string_value(ctx.get("effective_daily_bar_date"))
     natural_date = _string_value(ctx.get("market_natural_date") or ctx.get("session_date"))
+    weekday = _string_value(ctx.get("market_weekday"))
     minutes_to_open = _int_like(ctx.get("minutes_to_open"))
     minutes_to_close = _int_like(ctx.get("minutes_to_close"))
 
@@ -107,7 +158,8 @@ def _metadata_lines_zh(ctx: Dict[str, Any]) -> List[str]:
     if market_time:
         items.append(f"- 市场本地时间：{market_time}")
     if natural_date:
-        items.append(f"- “今天”指该市场自然日：{natural_date}")
+        today = f"{natural_date}，{weekday}" if weekday else natural_date
+        items.append(f"- “今天”指该市场自然日：{today}")
     if effective_date:
         items.append(f"- 最新可复用完整日线日期：{effective_date}")
     if minutes_to_open is not None:
@@ -123,6 +175,7 @@ def _metadata_lines_en(ctx: Dict[str, Any]) -> List[str]:
     market_time = _string_value(ctx.get("market_local_time"))
     effective_date = _string_value(ctx.get("effective_daily_bar_date"))
     natural_date = _string_value(ctx.get("market_natural_date") or ctx.get("session_date"))
+    weekday = _string_value(ctx.get("market_weekday"))
     minutes_to_open = _int_like(ctx.get("minutes_to_open"))
     minutes_to_close = _int_like(ctx.get("minutes_to_close"))
 
@@ -131,7 +184,8 @@ def _metadata_lines_en(ctx: Dict[str, Any]) -> List[str]:
     if market_time:
         items.append(f"- Market-local time: {market_time}")
     if natural_date:
-        items.append(f"- 'Today' means this market's natural date: {natural_date}")
+        today = f"{natural_date} ({weekday})" if weekday else natural_date
+        items.append(f"- 'Today' means this market's natural date: {today}")
     if effective_date:
         items.append(f"- Latest reusable complete daily bar date: {effective_date}")
     if minutes_to_open is not None:

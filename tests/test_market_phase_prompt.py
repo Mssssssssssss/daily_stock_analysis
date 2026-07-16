@@ -3,7 +3,10 @@
 
 import unittest
 
-from src.market_phase_prompt import format_market_phase_prompt_section
+from src.market_phase_prompt import (
+    format_market_date_system_constraint,
+    format_market_phase_prompt_section,
+)
 
 
 def _ctx(**overrides):
@@ -50,6 +53,18 @@ class MarketPhasePromptTestCase(unittest.TestCase):
         self.assertIn("最后一根日线可能尚未完成", section)
         self.assertIn("不得当作完整日线复盘", section)
         self.assertIn("距常规收盘约 300 分钟", section)
+
+    def test_system_constraint_distinguishes_today_from_completed_daily_bar(self):
+        section = format_market_date_system_constraint(_ctx(
+            market_natural_date="2026-07-16",
+            market_weekday="星期四",
+            effective_daily_bar_date="2026-07-15",
+        ))
+
+        self.assertIn("服务端市场日期硬约束", section)
+        self.assertIn("今天”仅指服务端提供的市场自然日：2026-07-16，星期四", section)
+        self.assertIn("今天是星期四；完整日线截至2026-07-15", section)
+        self.assertIn("绝不能用于推断或替代“今天”", section)
 
     def test_lunch_break_and_closing_auction_add_phase_specific_guidance(self):
         lunch = format_market_phase_prompt_section(_ctx(phase="lunch_break"))

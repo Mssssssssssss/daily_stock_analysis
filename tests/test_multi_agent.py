@@ -1523,6 +1523,26 @@ class TestBaseAgentMessageAssembly(unittest.TestCase):
         self.assertEqual(pack_message["role"], "user")
         self.assertNotIn("analysis_context_pack_summary", pack_message["content"])
 
+    def test_build_messages_places_market_date_constraint_in_first_system_message(self):
+        agent = self._make_agent()
+        ctx = AgentContext(query="今天 A 股怎么样", stock_code="600519")
+        ctx.meta["market_phase_context"] = {
+            "market": "cn",
+            "phase": "intraday",
+            "market_natural_date": "2026-07-16",
+            "market_weekday": "星期四",
+            "effective_daily_bar_date": "2026-07-15",
+        }
+        ctx.meta["conversation_history"] = [
+            {"role": "assistant", "content": "周三历史行情摘要"},
+        ]
+
+        messages = agent._build_messages(ctx)
+
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertIn("今天是星期四；完整日线截至2026-07-15", messages[0]["content"])
+        self.assertEqual(messages[1], {"role": "assistant", "content": "周三历史行情摘要"})
+
     def test_run_passes_stock_scope_from_context_meta_to_shared_runner(self):
         from src.agent.runner import RunLoopResult
 

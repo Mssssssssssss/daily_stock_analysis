@@ -189,6 +189,32 @@ def test_agent_system_prompts_require_phase_decision_contract() -> None:
 class TestAgentExecutor(unittest.TestCase):
     """Test the ReAct loop logic."""
 
+    def test_run_places_server_market_date_semantics_in_system_message(self):
+        executor = AgentExecutor(ToolRegistry(), _make_mock_adapter(), max_steps=1)
+        captured = {}
+
+        def fake_run_loop(messages, *args, **kwargs):
+            captured["messages"] = messages
+            return AgentResult(success=True, content="{}", dashboard={})
+
+        context = {
+            "stock_code": "600519",
+            "report_language": "zh",
+            "market_phase_context": {
+                "market": "cn",
+                "phase": "intraday",
+                "market_natural_date": "2026-07-16",
+                "market_weekday": "星期四",
+                "effective_daily_bar_date": "2026-07-15",
+            },
+        }
+        with patch.object(executor, "_run_loop", side_effect=fake_run_loop):
+            executor._run_with_context("今天 A 股怎么样", context)
+
+        self.assertEqual(captured["messages"][0]["role"], "system")
+        self.assertIn("今天是星期四；完整日线截至2026-07-15", captured["messages"][0]["content"])
+        self.assertIn("星期四", captured["messages"][1]["content"])
+
     def test_unsupported_tool_calling_response_is_not_treated_as_agent_success(self):
         executed_calls = []
         registry = ToolRegistry()

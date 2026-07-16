@@ -395,6 +395,13 @@ class AgentOrchestrator:
         merged = dict(context or {})
         runtime = build_agent_runtime_context(task=task, context=merged, trigger_source="orchestrator")
         payload = runtime.to_dict()
+        logger.info(
+            "Multi-agent runtime market dates: market=%s natural_date=%s weekday=%s effective_daily_bar_date=%s",
+            payload.get("market"),
+            payload.get("market_natural_date"),
+            payload.get("market_weekday"),
+            payload.get("effective_daily_bar_date"),
+        )
         merged["agent_runtime_context"] = payload
         merged["market_phase_context"] = payload
         if runtime.latest_complete_daily_bar_date is None:

@@ -30,7 +30,10 @@ from src.storage import get_db
 from src.agent.tools.registry import ToolRegistry
 from src.report_language import normalize_report_language
 from src.market_context import get_market_role, get_market_guidelines
-from src.market_phase_prompt import format_market_phase_prompt_section
+from src.market_phase_prompt import (
+    format_market_date_system_constraint,
+    format_market_phase_prompt_section,
+)
 from src.services.daily_market_context import format_daily_market_context_prompt_section
 from src.core.trading_calendar import build_agent_runtime_context
 from src.services.history_loader import reset_frozen_target_date, set_frozen_target_date
@@ -561,6 +564,7 @@ class AgentExecutor:
             skills_section=skills_section,
             language_section=_build_language_section(report_language),
         )
+        system_prompt = _append_market_date_system_constraint(system_prompt, context, report_language)
 
         # Build tool declarations in OpenAI format (litellm handles all providers)
         tool_decls = self.tool_registry.to_openai_tools()
@@ -631,6 +635,7 @@ class AgentExecutor:
             skills_section=skills_section,
             language_section=_build_language_section(report_language, chat_mode=True),
         )
+        system_prompt = _append_market_date_system_constraint(system_prompt, context, report_language)
 
         # Build tool declarations in OpenAI format (litellm handles all providers)
         tool_decls = self.tool_registry.to_openai_tools()
@@ -722,12 +727,18 @@ class AgentExecutor:
         merged = dict(context or {})
         runtime = build_agent_runtime_context(task=task, context=merged)
         runtime_payload = runtime.to_dict()
+        logger.info(
+            "Agent runtime market dates: market=%s natural_date=%s weekday=%s effective_daily_bar_date=%s",
+            runtime_payload.get("market"),
+            runtime_payload.get("market_natural_date"),
+            runtime_payload.get("market_weekday"),
+            runtime_payload.get("effective_daily_bar_date"),
+        )
         merged["agent_runtime_context"] = runtime_payload
         merged["market_phase_context"] = runtime_payload
         if runtime.latest_complete_daily_bar_date is None:
             return merged, None
         return merged, set_frozen_target_date(runtime.latest_complete_daily_bar_date)
-
     def _persist_provider_trace(
         self,
         *,
@@ -900,3 +911,15 @@ class AgentExecutor:
 
         parts.append("\n请使用可用工具获取缺失的数据（如历史K线、新闻等），然后以决策仪表盘 JSON 格式输出分析结果。")
         return "\n".join(parts)
+
+
+def _append_market_date_system_constraint(
+    system_prompt: str,
+    context: Dict[str, Any],
+    report_language: str,
+) -> str:
+    """Append non-overridable server date semantics to an LLM system prompt."""
+    constraint = format_market_date_system_constraint(
+        context.get("market_phase_context"), report_language=report_language,
+    )
+    return f"{system_prompt}\n\n{constraint}" if constraint else system_prompt
