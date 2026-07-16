@@ -150,6 +150,9 @@ python main.py --webui-only
 
 # 启动 Web 界面（启动时执行一次分析；需每日定时请加 --schedule 或设 SCHEDULE_ENABLED=true）
 python main.py --webui
+
+# /opt/daily_stock_analysis 服务器：仅启动 API/Web 服务并写入独立日志
+nohup /opt/daily_stock_analysis/.venv/bin/python /opt/daily_stock_analysis/main.py --serve-only > /opt/daily_stock_analysis/dsa-agent.log 2>&1 &
 ```
 
 > 不知道怎么访问？→ [云服务器 Web 界面访问指南](deploy-webui-cloud.md)
